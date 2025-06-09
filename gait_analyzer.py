@@ -44,7 +44,15 @@ class GaitAnalyzer:
         # Zwracamy fragmenty sygnału i czasu — ze środkowymi zerami, ale bez zer z przodu i z tyłu
         return signal[start_idx:end_idx], time[start_idx:end_idx]
 
-
+    def find_step_edges(self, signal: np.ndarray, time: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        # najpierw przytnij sygnał
+        signal_trimmed, time_trimmed = self.trim_signal_edges(signal, time)
+    
+        # teraz znajdź początek i koniec kroków na przyciętym sygnale
+        step_starts = np.where((signal_trimmed[:-1] == 0) & (signal_trimmed[1:] > 0))[0] + 1
+        step_ends = np.where((signal_trimmed[:-1] > 0) & (signal_trimmed[1:] == 0))[0] + 1
+    
+        return step_starts, step_ends, time_trimmed
 
     def get_step_periods(self, side: str) -> tuple[np.ndarray, np.ndarray]:
         """
@@ -67,20 +75,14 @@ class GaitAnalyzer:
 
         times = self.time.values
 
-        # Usuwa początkowe i końcowe zera
-        signal, times = self.trim_signal_edges(signal, times)
+        step_starts, _, trimmed_time = self.find_step_edges(signal, times)
 
-        # Indeksy, gdzie sygnał przechodzi z 0 do wartości dodatniej (początek kroku)
-        step_starts = np.where((signal[:-1] == 0) & (signal[1:] > 0))[0] + 1
-        step_times = times[step_starts]
-
-        # Okresy kroków (różnice między czasami)
+        step_times = trimmed_time[step_starts]
         periods = np.diff(step_times)
 
-        # czas rozpoczęcia kroków (bez ostatniego) oraz ich okresy
-        return step_times[:-1], periods
+        return step_times[:-1], periods  # Ostatni start nie ma kolejnego kroku
 
-    def detect_gait_phases(self, threshold: float = 10.0) -> pd.DataFrame:
+    def detect_step_phases(self, threshold: float = 10.0) -> pd.DataFrame:
         """
         Wykrywa fazy chodu: stance (podpora), swing (przenoszenie), double support (dwupodporowa).
         Zwraca DataFrame z kolumnami: time, left, right, global (faza łączna).
