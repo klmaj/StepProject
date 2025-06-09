@@ -19,7 +19,8 @@ print(f"\n=== {sheet_name} ===")
 # Wykres
 plotter = GaitPlotter(time, analyzer)
 plotter.plot_signals(czas_max=20) # plot_signals(czas_max=10)
+plotter.plot_step_phases(threshold=15.0)
 
-plotter.plot_steps_period(20,30)
+plotter.plot_step_periods()
 
 print("hello")
