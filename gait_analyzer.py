@@ -115,7 +115,67 @@ class GaitAnalyzer:
             })
 
         return pd.DataFrame(phases)
-        
+
+    def get_step_phase_intervals(self, side: str, threshold: float = 10.0) -> list[dict]:
+        """Zwraca listę faz dla każdego kroku."""
+        if side == 'left':
+            signal = self.left.sum(axis=1).values
+            other_signal = self.right.sum(axis=1).values
+        elif side == 'right':
+            signal = self.right.sum(axis=1).values
+            other_signal = self.left.sum(axis=1).values
+        else:
+            raise ValueError("side must be 'left' or 'right'")
+
+        times = self.time.values
+        step_starts, step_ends, _ = self.find_step_edges(signal, times)
+
+        phase_data = []
+
+        for start, end in zip(step_starts, step_ends):
+            step_times = times[start:end]
+            step_signal = signal[start:end]
+            other_step_signal = other_signal[start:end]
+
+            phases = []
+            for i in range(len(step_signal)):
+                left = step_signal[i] > threshold
+                right = other_step_signal[i] > threshold
+
+                if left and right:
+                    phase = "double_support"
+                elif left:
+                    phase = "stance"
+                else:
+                    phase = "swing"
+
+                phases.append(phase)
+
+            current = None
+            phase_intervals = []
+            for i, phase in enumerate(phases):
+                if phase != current:
+                    if current is not None:
+                        phase_intervals.append({
+                            "start": step_times[start_idx],
+                            "end": step_times[i],
+                            "phase": current
+                        })
+                    start_idx = i
+                    current = phase
+            # Dodaj ostatni przedział
+            if current is not None:
+                phase_intervals.append({
+                    "start": step_times[start_idx],
+                    "end": step_times[-1],
+                    "phase": current
+                })
+
+            phase_data.append(phase_intervals)
+
+        return phase_data
+
+
     def symmetry_index(self, a, b):
         return 100 * (a - b) / ((a + b) / 2 + 1e-6)
 

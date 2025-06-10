@@ -216,3 +216,53 @@ class GaitPlotter:
         )
 
         fig.show()
+
+    def plot_signal_with_phases(self, side: str, step_index: int, threshold: float = 10.0):
+        """Rysuje sygnał dla danego kroku z zaznaczonymi fazami."""
+        if side == 'left':
+            signal = self.analyzer.left.sum(axis=1).values
+        elif side == 'right':
+            signal = self.analyzer.right.sum(axis=1).values
+        else:
+            raise ValueError("side must be 'left' or 'right'")
+
+        time = self.analyzer.time.values
+        step_starts, step_ends, _ = self.analyzer.find_step_edges(signal, time)
+
+        start = step_starts[step_index]
+        end = step_ends[step_index]
+
+        segment_time = time[start:end]
+        segment_signal = signal[start:end]
+
+        # Wykryj fazy kroku
+        all_phases = self.analyzer.get_step_phase_intervals(side)
+        phases = all_phases[step_index]
+
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=segment_time, y=segment_signal, mode='lines', name=f"{side} signal"))
+
+        colors = {
+            "stance": "rgba(255,105,180,0.5)",
+            "swing": "rgba(255,165,0,1)",
+            "double_support": "rgba(0,0,255,0.5)"
+        }
+
+        for p in phases:
+            fig.add_shape(
+                type="rect",
+                x0=p["start"], x1=p["end"],
+                y0=0, y1=max(segment_signal),
+                fillcolor=colors[p["phase"]],
+                opacity=0.3,
+                layer="below",
+                line_width=0
+            )
+
+        fig.update_layout(
+            title=f"Fazy kroku ({side}) - krok {step_index}",
+            xaxis_title="Czas [s]",
+            yaxis_title="Sygnał sumaryczny",
+            showlegend=True
+        )
+        fig.show()
