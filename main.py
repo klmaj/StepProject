@@ -9,7 +9,7 @@ from step_plotter import StepPlotter
 if __name__ == "__main__":
     # Załaduj dane
     loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
-    time, left, right, sheet_name = loader.load_sheet(0)
+    time, left, right, sheet_name = loader.load_sheet(1)
     
     # Stwórz analizator
     analyzer = FootSensorAnalyzer(time, left, right, sheet_name)
@@ -27,6 +27,8 @@ if __name__ == "__main__":
     plotter.plot_signals()
     plotter.plot_step_detection_plotly('left')
     plotter.plot_pressure_heatmap_plotly('left')
+
+    plotter.plot_step_periods()
 
 # Wczytywanie danych
 #loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
@@ -46,7 +48,7 @@ if __name__ == "__main__":
 #plotter.plot_signals(czas_max=20) # plot_signals(czas_max=10)
 #plotter.plot_step_phases(threshold=15.0)
 
-#plotter.plot_step_periods()
+
 #plotter.plot_signal_with_phases("left", step_index=5, threshold=10)
 
 

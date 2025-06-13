@@ -1,9 +1,10 @@
+from step_analyzer import FootSensorAnalyzer
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
 
 class StepPlotter:
-    def __init__(self, time, analyzer):
+    def __init__(self, time, analyzer:FootSensorAnalyzer):
         self.analyzer = analyzer
         self.time = time
         self.left = analyzer.left
@@ -196,6 +197,68 @@ class StepPlotter:
                    yticklabels=['Palce', 'Przód', 'Środek', 'Pięta'])
         plt.title(f'Rozkład średniego nacisku - {foot} stopa')
         plt.ylabel('Obszar stopy')
-        plt.show()
-    
+        plt.show()   
    
+    def plot_step_periods(self):
+        """
+        Rysuje wykres okresu kroku (czas między kolejnymi zerami) w funkcji czasu,
+        osobno dla lewej i prawej stopy, na jednym wykresie.
+        """
+        # Dane z analizatora
+        times_left, periods_left = self.analyzer.get_step_periods("left")
+        times_right, periods_right = self.analyzer.get_step_periods("right")
+
+        # Tworzenie wykresu interaktywnego
+        fig = go.Figure()
+
+        # Lewa stopa – okresy kroków
+        fig.add_trace(go.Scatter(
+            x=times_left,
+            y=periods_left,
+            mode='markers',
+            name='Lewa stopa',
+            marker=dict(color='blue')
+        ))
+
+        # Prawa stopa – okresy kroków
+        fig.add_trace(go.Scatter(
+            x=times_right,
+            y=periods_right,
+            mode='markers',
+            name='Prawa stopa',
+            marker=dict(color='red')
+        ))
+
+        # Średnia lewa
+        mean_left = np.mean(periods_left)
+        fig.add_trace(go.Scatter(
+            x=[times_left.min(), times_left.max()],
+            y=[mean_left, mean_left],
+            mode='lines',
+            name=f'Średnia lewa ({mean_left:.2f}s)',
+            line=dict(color='blue', dash='solid', width=1)
+        ))
+
+        # Średnia prawa
+        mean_right = np.mean(periods_right)
+        fig.add_trace(go.Scatter(
+            x=[times_right.min(), times_right.max()],
+            y=[mean_right, mean_right],
+            mode='lines',
+            name=f'Średnia prawa ({mean_right:.2f}s)',
+            line=dict(color='red', dash='solid', width=1)
+        ))
+
+        fig.update_layout(
+            title="Okresy kroków w czasie",
+            xaxis_title="Czas [s]",
+            yaxis_title="Okres kroku [s]",
+            hovermode="x unified",
+            template="plotly_white",
+            height=500
+        )
+
+        
+        fig.update_yaxes(range=[0, 1.6])
+
+        fig.show()

@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from scipy import signal
 from scipy.stats import pearsonr
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+from sklearn.cluster import KMeans
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -13,6 +16,12 @@ class FootSensorAnalyzer:
         self.left = np.array(left_foot)
         self.right = np.array(right_foot)
         self.sheet_name = sheet_name
+        self.left_sensors = self.left  # 8 czujników lewej stopy
+        self.right_sensors = self.right  # 8 czujników prawej stopy
+        self.left_total = None   # suma sygnałów lewej stopy
+        self.right_total = None  # suma sygnałów prawej stopy
+        self.steps_left = []
+        self.steps_right = []
         self.sampling_rate = self._calculate_sampling_rate()
         
         # Nazwy czujników (możesz dostosować do swojego układu)
@@ -27,8 +36,7 @@ class FootSensorAnalyzer:
         if len(self.time) > 1:
             dt = np.mean(np.diff(self.time))
             return 1.0 / dt
-        return None
-    
+        return None   
     
     def detect_steps(self, foot='left', threshold_percent=20, min_step_time=0.3):
         """Wykrywa kroki na podstawie sumy sygnałów z wszystkich czujników"""
@@ -226,3 +234,98 @@ class FootSensorAnalyzer:
         sorted_right = sorted(right_dist.items(), key=lambda x: x[1]['mean'], reverse=True)
         for sensor, stats in sorted_right[:3]:
             print(f"  {sensor}: {stats['mean']:.2f} (max: {stats['max']:.2f})")
+
+    def trim_signal_edges(self, signal: np.ndarray, time: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Usuwa tylko początkowe i końcowe zera z sygnału i odpowiadającego czasu, ale zostawia zera w środku"""
+        # Szukamy pierwszego i ostatniego indeksu, gdzie sygnał jest różny od zera
+        non_zero_indices = np.flatnonzero(signal != 0)
+    
+        if len(non_zero_indices) == 0:
+            return np.array([]), np.array([])
+    
+        start_idx = max(non_zero_indices[0]-1,0)
+        end_idx = min(non_zero_indices[-1] + 2, len(signal))  # +1 żeby zachować ten ostatni indeks
+    
+        # Zwracamy fragmenty sygnału i czasu — ze środkowymi zerami, ale bez zer z przodu i z tyłu
+        return signal[start_idx:end_idx], time[start_idx:end_idx]
+
+    def find_step_edges(self, signal: np.ndarray, time: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        # najpierw przytnij sygnał
+        signal_trimmed, time_trimmed = self.trim_signal_edges(signal, time)
+    
+        # teraz znajdź początek i koniec kroków na przyciętym sygnale
+        step_starts = np.where((signal_trimmed[:-1] == 0) & (signal_trimmed[1:] > 0))[0] + 1
+        step_ends = np.where((signal_trimmed[:-1] > 0) & (signal_trimmed[1:] == 0))[0] + 1
+    
+        return step_starts, step_ends, time_trimmed
+
+    def get_step_periods(self, side: str) -> tuple[np.ndarray, np.ndarray]:
+        """
+        Oblicza okresy kroków (czas pomiędzy kolejnymi krokami) dla lewej lub prawej stopy.
+
+        Parametry:
+        - side: 'left' lub 'right'
+
+        Zwraca:
+        - times: czasy rozpoczęcia kroków
+        - periods: czas trwania kolejnych kroków
+        """
+
+        if side == 'left':
+            signal = self.left[:,0]
+        elif side == 'right':
+            signal = self.right[:,0]
+        else:
+            raise ValueError("side must be 'left' or 'right'")
+
+        times = self.time
+
+        step_starts, _, trimmed_time = self.find_step_edges(signal, times)
+
+        step_times = trimmed_time[step_starts]
+        periods = np.diff(step_times)
+
+        return step_times[:-1], periods  # Ostatni start nie ma kolejnego kroku
+
+    def analyze_multi_sensor_symmetry(self):
+        """Zaawansowana analiza symetrii dla wszystkich czujników"""
+        symmetry = {}
+        
+        # Symetria dla każdego czujnika
+        sensor_symmetries = []
+        for i in range(8):
+            left_mean = np.mean(self.left_sensors[:, i])
+            right_mean = np.mean(self.right_sensors[:, i])
+            
+            if left_mean + right_mean > 0:
+                sym_index = 2 * abs(left_mean - right_mean) / (left_mean + right_mean) * 100
+                sensor_symmetries.append(sym_index)
+            else:
+                sensor_symmetries.append(0)
+                
+        symmetry['sensor_symmetry_indices'] = dict(zip(self.sensor_names, sensor_symmetries))
+        
+        # Ogólna symetria sumaryczna
+        total_sym = 2 * abs(np.mean(self.left_total) - np.mean(self.right_total)) / (np.mean(self.left_total) + np.mean(self.right_total)) * 100
+        symmetry['total_symmetry_index'] = total_sym
+        
+        # Korelacja między odpowiadającymi sobie czujnikami
+        sensor_correlations = []
+        for i in range(8):
+            corr = np.corrcoef(self.left_sensors[:, i], self.right_sensors[:, i])[0, 1]
+            sensor_correlations.append(corr)
+            
+        symmetry['sensor_correlations'] = dict(zip(self.sensor_names, sensor_correlations))
+        
+        # PCA dla analizy głównych wzorców asymetrii
+        combined_sensors = np.column_stack([self.left_sensors, self.right_sensors])
+        scaler = StandardScaler()
+        scaled_sensors = scaler.fit_transform(combined_sensors)
+        
+        pca = PCA(n_components=4)
+        pca_result = pca.fit_transform(scaled_sensors)
+        
+        symmetry['pca_explained_variance'] = pca.explained_variance_ratio_
+        symmetry['pca_components'] = pca.components_
+        
+        return symmetry
