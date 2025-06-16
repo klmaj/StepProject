@@ -8,8 +8,10 @@ from step_plotter import StepPlotter
 # Przykład użycia:
 if __name__ == "__main__":
     # Załaduj dane
-    loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
-    time, left, right, sheet_name = loader.load_sheet(1)
+    #loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
+    loader = SensorDataLoader("Dane2025-06-06.xlsx")
+
+    time, left, right, sheet_name = loader.load_sheet(6)
     
     # Stwórz analizator
     analyzer = FootSensorAnalyzer(time, left, right, sheet_name)
@@ -26,7 +28,7 @@ if __name__ == "__main__":
     # Wykresy - plotly (interaktywne)
     plotter.plot_signals()
     plotter.plot_step_detection_plotly('left')
-    plotter.plot_pressure_heatmap_plotly('left')
+    plotter.plot_pressure_heatmap_both_feet()
 
     plotter.plot_step_periods()
 

@@ -2,6 +2,7 @@ from step_analyzer import FootSensorAnalyzer
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import numpy as np
+import base64
 
 class StepPlotter:
     def __init__(self, time, analyzer:FootSensorAnalyzer):
@@ -9,8 +10,13 @@ class StepPlotter:
         self.time = time
         self.left = analyzer.left
         self.right = analyzer.right
+
+    def encode_image(self, img_path):
+            with open(img_path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode()
+            return "data:image/png;base64," + encoded
         
-    def plot_signals(self, czas_max=None):
+    def plot_signals(self, czas_max=None, return_fig=False):
         """Interaktywny wykres sygnałów z czujników używając Plotly"""
         # Filtrowanie danych wg zakresu czasu
         if czas_max is not None:
@@ -23,7 +29,7 @@ class StepPlotter:
             time_plot = self.time
             left_plot = self.left
             right_plot = self.right
-            title = "Pełne dane"
+            title = "Przebiegi wartości siły nacisku od czasu"
 
         # Kolory
         colors = ['red', 'yellow', 'blue', 'darkgreen', 'brown', 'cyan', 'magenta', 'lightgreen']
@@ -57,22 +63,55 @@ class StepPlotter:
             row=2, col=1
         )
 
+        # Zakoduj obrazki stóp
+        left_img = self.encode_image("left_foot.png")
+        right_img = self.encode_image("right_foot.png")
+
+        # Dodaj obrazy jako layout_image
+        fig.add_layout_image(
+            dict(
+                source=left_img,
+                xref="paper", yref="paper",
+                x=1.12, y=0.9,  # obok górnego wykresu
+                sizex=0.12, sizey=0.3,
+                xanchor="right", yanchor="top",
+                layer="above"
+            )
+        )
+
+        fig.add_layout_image(
+            dict(
+                source=right_img,
+                xref="paper", yref="paper",
+                x=1.12, y=0.35,  # obok dolnego wykresu
+                sizex=0.12, sizey=0.3,
+                xanchor="right", yanchor="top",
+                layer="above"
+            )
+        )
+
+
         # Interaktywność i styl
         fig.update_layout(
-            height=900,
             title=title,
             hovermode="x unified",
             template="plotly_white",
-            dragmode='zoom'
+            dragmode='zoom',
+            margin=dict(t=50, b=50, r=200),    # zostaw miejsce na obrazki na dole
+            #width=1400,
+            height=900,
         )
 
         fig.update_yaxes(title_text="Lewa stopa F [N]", fixedrange=False, row=1, col=1)
         fig.update_yaxes(title_text="Prawa stopa F [N]", fixedrange=False, row=2, col=1)
         fig.update_xaxes(title_text="Czas [s]", row=2, col=1)
 
-        fig.show()
+        if return_fig:
+            return fig
+        else:
+            fig.show()
     
-    def plot_step_detection_plotly(self, foot='left'):
+    def plot_step_detection_plotly(self, foot='left', return_fig=False):
         """Interaktywny wykres wykrywania kroków"""
         steps, total_force = self.analyzer.detect_steps(foot)
         
@@ -104,10 +143,14 @@ class StepPlotter:
             hovermode="x"
         )
         
-        fig.show()
+        if return_fig:
+            return fig
+        else:
+            fig.show()
+
         return steps
     
-    def plot_pressure_heatmap_plotly(self, foot='left'):
+    def plot_pressure_heatmap_plotly(self, foot='left', return_fig=False):
         """Interaktywna mapa ciepła rozkładu nacisku"""
         if foot == 'left':
             data = self.left
@@ -145,9 +188,12 @@ class StepPlotter:
             template="plotly_white"
         )
         
-        fig.show()
+        if return_fig:
+            return fig
+        else:
+            fig.show()
     
-    def plot_step_detection(self, foot='left', figsize=(12, 8)):
+    def plot_step_detection(self, foot='left', figsize=(12, 8), return_fig=False):
         """Wykres wykrywania kroków"""
         steps, total_force = self.detect_steps(foot)
         
@@ -164,42 +210,86 @@ class StepPlotter:
         plt.ylabel('Całkowita siła')
         plt.legend()
         plt.grid(True, alpha=0.3)
-        plt.show()
+        if return_fig:
+            return plt
+        else:
+            plt.show()
         
         print(f"Wykryto {len(steps)} kroków dla {foot} stopy")
         return steps
     
-    def plot_pressure_heatmap(self, foot='left', figsize=(10, 6)):
-        """Mapa ciepła pokazująca rozkład nacisku na stopie"""
-        if foot == 'left':
-            data = self.left
-        else:
-            data = self.right
-        
-        # Utwórz macierz reprezentującą stopę (uproszczony kształt)
-        foot_matrix = np.zeros((4, 2))  # 4 rzędy (pięta->palce), 2 kolumny (wewnętrzna/zewnętrzna)
-        
-        # Mapowanie czujników na pozycje w macierzy stopy
-        sensor_positions = [
-            (3, 0), (3, 1),  # Heel Med, Heel Lat
-            (2, 0), (2, 1),  # Mid Med, Mid Lat  
-            (1, 0), (1, 1),  # Fore Med, Fore Lat
-            (0, 0), (0, 1)   # Toe 1, Toe 2-5
+    def plot_pressure_heatmap_both_feet(self, return_fig=False):
+        """Interaktywna mapa ciepła pokazująca rozkład nacisku dla obu stóp (8x2)"""
+    
+        # Utwórz macierz 8x2: 8 pozycji czujników x 2 stopy (lewa, prawa)
+        heatmap_matrix = np.zeros((8, 2))
+    
+        # Kolejność czujników: Heel Med, Heel Lat, Mid Med, Mid Lat, Fore Med, Fore Lat, Toe 1, Toe 2-5
+        sensor_labels = [
+            1, 2,  # Heel Med, Heel Lat
+            3, 4,  # Mid Med, Mid Lat
+            5, 6,  # Fore Med, Fore Lat
+            7, 8   # Toe 1, Toe 2-5
         ]
+    
+        # Wypełnij macierz danymi z lewej i prawej stopy
         
-        # Wypełnij macierz średnimi wartościami
-        for i, (row, col) in enumerate(sensor_positions):
-            foot_matrix[row, col] = np.mean(data[:, i])
-        
-        plt.figure(figsize=figsize)
-        sns.heatmap(foot_matrix, annot=True, fmt='.1f', cmap='YlOrRd', 
-                   xticklabels=['Wewnętrzna', 'Zewnętrzna'],
-                   yticklabels=['Palce', 'Przód', 'Środek', 'Pięta'])
-        plt.title(f'Rozkład średniego nacisku - {foot} stopa')
-        plt.ylabel('Obszar stopy')
-        plt.show()   
+        left_means = self.analyzer.mean_max_pressure_per_step('left') # np.mean(self.left[:, sensor_idx])   # lewa stopa
+        right_means = self.analyzer.mean_max_pressure_per_step('right') #np.mean(self.right[:, sensor_idx])  # prawa stopa
+
+        heatmap_matrix = np.column_stack((left_means, right_means))
+
+
+        left_img_encoded = self.encode_image("left_foot.png")
+        right_img_encoded = self.encode_image("right_foot.png")
+
+        fig = go.Figure(data=go.Heatmap(
+            z=heatmap_matrix,
+            x=["Lewa stopa", "Prawa stopa"],
+            y=sensor_labels,
+            colorscale='YlOrRd',
+            text=np.round(heatmap_matrix, 1),
+            texttemplate="%{text:.1f}",
+            textfont={"size": 12},
+            hovertemplate='%{y}<br>%{x}<br>Średnia siła: %{z:.2f}<extra></extra>'
+        ))
+
+        fig.update_layout(
+            title="Średni rozkład nacisku na stopie",
+            xaxis_title=" ",
+            yaxis_title="Czujnik",
+            yaxis_autorange='reversed',  # żeby zachować podobny układ do matplotlib
+            margin=dict(t=50, b=250),    # zostaw miejsce na obrazki na dole
+            width=800,
+            height=900,
+            template="plotly_white",
+            images=[
+                dict(
+                    source=left_img_encoded,
+                    xref="paper", yref="paper",
+                    x=0.22, y=-0.4,  # pozycja w osi papieru (x od lewej do prawej 0-1, y od dołu do góry)
+                    sizex=0.3, sizey=0.35,
+                    xanchor="center", yanchor="bottom",
+                    layer="above"
+                ),
+                dict(
+                    source=right_img_encoded,
+                    xref="paper", yref="paper",
+                    x=0.78, y=-0.4,
+                    sizex=0.3, sizey=0.35,
+                    xanchor="center", yanchor="bottom",
+                    layer="above"
+                )
+            ]
+        )
+
+        if return_fig:
+            return fig
+        else:
+            fig.show()
+
    
-    def plot_step_periods(self):
+    def plot_step_periods(self, return_fig=False):
         """
         Rysuje wykres okresu kroku (czas między kolejnymi zerami) w funkcji czasu,
         osobno dla lewej i prawej stopy, na jednym wykresie.
@@ -261,4 +351,9 @@ class StepPlotter:
         
         fig.update_yaxes(range=[0, 1.6])
 
-        fig.show()
+        if return_fig:
+            return fig
+        else:
+            fig.show()
+
+    

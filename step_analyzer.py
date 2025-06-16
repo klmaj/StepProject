@@ -287,6 +287,51 @@ class FootSensorAnalyzer:
 
         return step_times[:-1], periods  # Ostatni start nie ma kolejnego kroku
 
+    def mean_max_pressure_per_step(self, side='left'):
+        """
+        Oblicza średnią maksymalną wartość nacisku na każdym czujniku dla kroków danej stopy.
+
+        Zwraca:
+        - mean_max_per_sensor: np.ndarray, shape (liczba_czujników,), średnie maksima z kroków
+        """
+
+        if side == 'left':
+            data = self.left  # zakładam, że shape (czas, czujniki)
+        elif side == 'right':
+            data = self.right
+        else:
+            raise ValueError("side musi być 'left' lub 'right'")
+
+        # Użyj sygnału z jednego czujnika do wykrywania kroków, np. pierwszego
+        signal = data[:, 0]
+        time = self.time
+
+        step_starts, step_ends, time_trimmed = self.find_step_edges(signal, time)
+
+        # Jeśli kroki się nie dopasowują (np. różna długość), obetnij
+        n_steps = min(len(step_starts), len(step_ends))
+
+        max_values_per_step = []
+
+        for i in range(n_steps):
+            start_idx = step_starts[i]
+            end_idx = step_ends[i]
+
+            # Wyciągnij fragment danych dla kroku (wszystkie czujniki)
+            step_data = data[start_idx:end_idx, :]  # shape (czas_w_kroku, czujniki)
+
+            # Maksimum nacisku na każdym czujniku w tym kroku
+            max_per_sensor = np.max(step_data, axis=0)  # shape (czujniki,)
+            max_values_per_step.append(max_per_sensor)
+
+        max_values_per_step = np.array(max_values_per_step)  # shape (liczba_kroków, czujniki)
+
+        # Oblicz średnią maksymalną wartość per czujnik (średnia po krokach)
+        mean_max_per_sensor = np.mean(max_values_per_step, axis=0)
+
+        return mean_max_per_sensor
+
+
     def analyze_multi_sensor_symmetry(self):
         """Zaawansowana analiza symetrii dla wszystkich czujników"""
         symmetry = {}
