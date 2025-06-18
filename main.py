@@ -1,6 +1,9 @@
 from sensor_loader import SensorDataLoader
 from step_analyzer import FootSensorAnalyzer
 from step_plotter import StepPlotter
+from symmetry import EnhancedFootSensorAnalyzer
+from symmetry_ploter import EnhancedStepPlotter
+
 #from gait_analyzer import GaitAnalyzer
 #from gait_plotter import GaitPlotter
 
@@ -31,6 +34,20 @@ if __name__ == "__main__":
     plotter.plot_pressure_heatmap_both_feet()
 
     plotter.plot_step_periods()
+    symmetry_analyzer = EnhancedFootSensorAnalyzer(time, left, right, sheet_name)
+
+    raport = symmetry_analyzer.generate_comprehensive_report()
+
+    # 4. Tworzenie obiektów do wizualizacji
+    plotter = EnhancedStepPlotter(symmetry_analyzer)
+
+    # 5. Wizualizacje
+    plotter.plot_force_distribution()          # Histogramy sił
+    plotter.plot_correlation_matrix()          # Macierz korelacji czujników
+    plotter.plot_foot_correlation_analysis()   # Analiza korelacji stóp
+    plotter.plot_symmetry_analysis()           # Analiza symetrii
+    plotter.plot_cop_analysis()                # Centrum nacisku (COP)
+    plotter.plot_comprehensive_dashboard()     # Dashboard zbiorczy
 
 # Wczytywanie danych
 #loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
