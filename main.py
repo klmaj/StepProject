@@ -14,7 +14,7 @@ if __name__ == "__main__":
     #loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
     loader = SensorDataLoader("Dane2025-06-06.xlsx")
 
-    time, left, right, sheet_name = loader.load_sheet(6)
+    time, left, right, sheet_name = loader.load_sheet(2)
     
     # Stwórz analizator
     analyzer = FootSensorAnalyzer(time, left, right, sheet_name)
