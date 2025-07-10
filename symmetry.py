@@ -24,14 +24,14 @@ class EnhancedFootSensorAnalyzer:
         # Pozycje czujników na stopie (w mm, układ anatomiczny)
         # Zakładam układ: pięta -> palce, przyśrodkowo -> boczno
         self.sensor_positions = np.array([
-            [0, 30],    # 1: Pięta przyśrodkowa
-            [0, -30],   # 2: Pięta boczna
-            [60, 30],   # 3: Środstopie przyśrodkowe
-            [60, -30],  # 4: Środstopie boczne
-            [120, 30],  # 5: Przodstopie przyśrodkowe
-            [120, -30], # 6: Przodstopie boczne
-            [180, 0],   # 7: Paluch
-            [170, -20]  # 8: Palce 2-5
+            [50, 30],    # 1: Pięta 
+            [45, 90],   # 2: Łuk podlużny
+            [50, 130],   # 3: Środstopie przyśrodkowe
+            [30, 250],  # 4: Paluch
+            [70, 90],  # 5: Środek stopy zewnetrznie
+            [35, 160], # 6: Śródstopie pod dużym paluchem
+            [75, 160],   # 7: Śródstopie pod małym paluchem
+            [65, 240]  # 8: Palce 2-5
         ])
         
         self.sensor_names = ['1', '2', '3', '4', '5', '6', '7', '8']

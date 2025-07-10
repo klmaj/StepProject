@@ -1,0 +1,34 @@
+Analiza rozkładu nacisku i stabilności
+
+Mapa ciśnienia - wizualizacja rozkładu obciążenia na każdej stopie
+Analiza centrum nacisku (COP) - śledzenie przemieszczania się punktu przyłożenia wypadkowej siły
+Asymetria między stopami - porównanie obciążenia lewej i prawej stopy
+Analiza stabilności postawy - wariancja i amplituda wychyleń COP
+
+Analiza czasowa i dynamiczna
+
+Analiza faz chodu - identyfikacja fazy podporu, odbicia, przenoszenia
+Timing i synchronizacja - koordynacja między stopami
+Analiza spektralna - identyfikacja częstotliwości drgań i oscylacji
+Wykrywanie wzorców patologicznych - nieprawidłowości w rytmie chodu
+
+Zaawansowane techniki analityczne
+
+Analiza głównych składowych (PCA) - redukcja wymiarowości i identyfikacja kluczowych wzorców
+Analiza skupień - klasyfikacja różnych typów chodu/postawy
+Machine learning - predykcja stanów patologicznych, klasyfikacja wzorców
+Analiza sieci neuronowych - modelowanie złożonych zależności między czujnikami
+
+Zastosowania kliniczne
+
+Diagnostyka ortopedyczna - wykrywanie płaskostopia, wysklepienia, deformacji
+Rehabilitacja - monitoring postępów w terapii
+Analiza neurologiczna - zaburzenia równowagi, choroby neurodegeneracyjne
+Medycyna sportowa - optymalizacja techniki, prewencja kontuzji
+
+Zaawansowane wskaźniki
+
+Wskaźniki symetrii - porównanie lewej i prawej strony
+Wskaźniki stabilności - np. wskaźnik stabilności posturalnej
+Parametry czasowe - czas kontaktu, czas przenoszenia ciężaru
+Analiza trajektorii - ścieżki przemieszczania się centrum nacisku

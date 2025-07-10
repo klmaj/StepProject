@@ -8,6 +8,7 @@ from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.decomposition import PCA
 from sklearn.metrics import euclidean_distances
 from sklearn.cluster import KMeans
+from symmetryPlotter import SymmetryVisualizationTools
 import json
 import pickle
 from datetime import datetime
@@ -617,5 +618,17 @@ if __name__ == "__main__":
     # extractor2 = SymmetryPatternExtractor('test-dane2.txt')
     # similarities = db.find_similar_patterns(extractor2)
     # print("Najbardziej podobne wzorce:", similarities)
-    
+    # 1. Inicjalizacja z obiektem SymmetryPatternExtractor
+    vis_tools = SymmetryVisualizationTools(extractor)
+
+    # 2. Generowanie podstawowego przeglądu
+    vis_tools.plot_basic_pressure_overview()
+
+    # 3. Szczegółowa analiza wzorców
+    vis_tools.plot_symmetry_patterns_detailed()
+
+    # 4. Specjalistyczne wizualizacje
+    vis_tools.plot_fingerprint_radar()
+    vis_tools.plot_sensor_heatmap()
+    vis_tools.plot_time_series_analysis() 
    

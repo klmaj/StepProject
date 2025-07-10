@@ -356,4 +356,193 @@ class StepPlotter:
         else:
             fig.show()
 
+    def plot_cross_correlation_matrix(self, return_fig=False):
+        """
+        Rysuje mapę korelacji pomiędzy czujnikami lewej i prawej stopy (8x8),
+        z rysunkami stóp po prawej stronie.
+        """
+        corr_matrix = self.analyzer.compute_cross_correlation_matrix()
+        sensor_labels = [f"Czujnik {i+1}" for i in range(8)]
+
+        # Zakodowane obrazki
+        left_img_encoded = self.encode_image("left_foot.png")
+        right_img_encoded = self.encode_image("right_foot.png")
+
+        fig = go.Figure(data=go.Heatmap(
+            z=corr_matrix,
+            x=[f"P{i+1}" for i in range(8)],
+            y=[f"L{i+1}" for i in range(8)],
+            colorscale='RdBu',
+            zmin=-1, zmax=1,
+            colorbar=dict(title='Korelacja'),
+            text=np.round(corr_matrix, 2),
+            texttemplate="%{text:.2f}",
+            textfont={"size": 12},
+            hovertemplate='Lewa %{x}<br>Prawa %{y}<br>Korelacja: %{z:.2f}<extra></extra>'
+        ))
+
+        fig.update_layout(
+            title="Korelacja pomiędzy czujnikami lewej i prawej stopy",
+            yaxis_title="Czujniki lewej stopy",
+            xaxis_title="Czujniki prawej stopy",
+            template="plotly_white",
+            width=1000,
+            height=700,
+            margin=dict(t=50, b=50, r=200),  # zostaw miejsce po prawej
+            images=[
+                dict(
+                    source=left_img_encoded,
+                    xref="paper", yref="paper",
+                    x=1.26, y=0.9,
+                    sizex=0.12, sizey=0.3,
+                    xanchor="right", yanchor="top",
+                    layer="above"
+                ),
+                dict(
+                    source=right_img_encoded,
+                    xref="paper", yref="paper",
+                    x=1.26, y=0.35,
+                    sizex=0.12, sizey=0.3,
+                    xanchor="right", yanchor="top",
+                    layer="above"
+                )
+            ]
+        )
+
+        if return_fig:
+            return fig
+        else:
+            fig.show()
+
+
+    def plot_heatmap_and_correlation_side_by_side(self, return_fig=False):
+        """Łączy mapę nacisku i korelację czujników w jednej karcie, z obrazkami stóp"""
+
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+        import numpy as np
+
+        # --- Dane ---
+        left_means = self.analyzer.mean_max_pressure_per_step('left')
+        right_means = self.analyzer.mean_max_pressure_per_step('right')
+        heatmap_matrix = np.column_stack((left_means, right_means))
+        corr_matrix = self.analyzer.compute_cross_correlation_matrix()
+
+        # --- Zakodowane obrazki ---
+        left_img_encoded = self.encode_image("left_foot.png")
+        right_img_encoded = self.encode_image("right_foot.png")
+
+        # --- Subplots ---
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("Średni rozkład nacisku", "Korelacja czujników L vs P"),
+            column_widths=[0.5, 0.5]
+        )
+
+        # --- Heatmapa nacisku ---
+        fig.add_trace(go.Heatmap(
+            z=heatmap_matrix,
+            x=["Lewa stopa", "Prawa stopa"],
+            y=[f"Czujnik {i+1}" for i in range(8)],
+            colorscale='YlOrRd',
+            zmin=np.min(heatmap_matrix), zmax=np.max(heatmap_matrix),
+            showscale=False,
+            text=np.round(heatmap_matrix, 1),
+            texttemplate="%{text:.1f}",
+            hovertemplate='%{y}<br>%{x}<br>Średnia siła: %{z:.2f}<extra></extra>'
+        ), row=1, col=1)
+
+        # --- Heatmapa korelacji ---
+        fig.add_trace(go.Heatmap(
+            z=corr_matrix,
+            x=[f"L{i+1}" for i in range(8)],
+            y=[f"P{i+1}" for i in range(8)],
+            colorscale='RdBu',
+            zmin=-1, zmax=1,
+            colorbar=dict(title='Korelacja'),
+            text=np.round(corr_matrix, 2),
+            texttemplate="%{text:.2f}",
+            hovertemplate='Lewa %{x}<br>Prawa %{y}<br>Korelacja: %{z:.2f}<extra></extra>'
+        ), row=1, col=2)
+
+        # --- Layout + obrazki ---
+        fig.update_layout(
+            title="Porównanie: nacisk vs korelacja między czujnikami",
+            height=900,
+            width=1300,
+            template="plotly_white",
+            margin=dict(t=50, b=250),
+            images=[
+                dict(
+                    source=left_img_encoded,
+                    xref="paper", yref="paper",
+                    x=0.22, y=-0.35,
+                    sizex=0.3, sizey=0.35,
+                    xanchor="center", yanchor="bottom",
+                    layer="above"
+                ),
+                dict(
+                    source=right_img_encoded,
+                    xref="paper", yref="paper",
+                    x=0.78, y=-0.35,
+                    sizex=0.3, sizey=0.35,
+                    xanchor="center", yanchor="bottom",
+                    layer="above"
+                )
+            ]
+        )
+
+        if return_fig:
+            return fig
+        else:
+            fig.show()
+
+    def plot_symmetry_indices(self, return_fig=False):
+        """
+        Rysuje globalny i czujnikowy wskaźnik symetrii.
+        - słupek dla każdego czujnika
+        - osobny pasek dla globalnej symetrii
+        """
+        sym_data = self.analyzer.compute_symmetry_indices()
+        sensor_sym = sym_data['sensor_symmetry']
+        global_sym = sym_data['global_symmetry']
+
+        labels = [f"Czujnik {k}" for k in sensor_sym.keys()]
+        values = list(sensor_sym.values())
+
+        fig = go.Figure()
+
+        # Wykres słupkowy dla czujników
+        fig.add_trace(go.Bar(
+            x=labels,
+            y=values,
+            name="Symetria czujnikowa [%]",
+            marker_color='steelblue'
+        ))
+
+        # Linia pozioma z globalnym wskaźnikiem
+        fig.add_trace(go.Scatter(
+            x=labels,
+            y=[global_sym] * len(labels),
+            name=f"Symetria globalna ({global_sym:.1f}%)",
+            mode='lines',
+            line=dict(color='red', dash='dash')
+        ))
+
+        fig.update_layout(
+            title="Wskaźniki symetrii siły nacisku",
+            yaxis_title="Symetria [%]",
+            xaxis_title="Czujniki",
+            template="plotly_white",
+            hovermode="x unified",
+            height=500
+        )
+
+        if return_fig:
+            return fig
+        else:
+            fig.show()
+
+    
+
     

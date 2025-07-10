@@ -11,10 +11,10 @@ from symmetry_ploter import EnhancedStepPlotter
 # Przykład użycia:
 if __name__ == "__main__":
     # Załaduj dane
-    #loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
-    loader = SensorDataLoader("Dane2025-06-06.xlsx")
+    loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
+    #loader = SensorDataLoader("Dane2025-06-06.xlsx")
 
-    time, left, right, sheet_name = loader.load_sheet(2)
+    time, left, right, sheet_name = loader.load_sheet(0)
     
     # Stwórz analizator
     analyzer = FootSensorAnalyzer(time, left, right, sheet_name)
@@ -34,20 +34,25 @@ if __name__ == "__main__":
     plotter.plot_pressure_heatmap_both_feet()
 
     plotter.plot_step_periods()
+
+    plotter.plot_cross_correlation_matrix()
+
+    plotter.plot_symmetry_indices()
+
     symmetry_analyzer = EnhancedFootSensorAnalyzer(time, left, right, sheet_name)
 
     raport = symmetry_analyzer.generate_comprehensive_report()
 
     # 4. Tworzenie obiektów do wizualizacji
-    plotter = EnhancedStepPlotter(symmetry_analyzer)
+    #plotter = EnhancedStepPlotter(symmetry_analyzer)
 
     # 5. Wizualizacje
-    plotter.plot_force_distribution()          # Histogramy sił
-    plotter.plot_correlation_matrix()          # Macierz korelacji czujników
-    plotter.plot_foot_correlation_analysis()   # Analiza korelacji stóp
-    plotter.plot_symmetry_analysis()           # Analiza symetrii
-    plotter.plot_cop_analysis()                # Centrum nacisku (COP)
-    plotter.plot_comprehensive_dashboard()     # Dashboard zbiorczy
+    #plotter.plot_force_distribution()          # Histogramy sił
+    #plotter.plot_correlation_matrix()          # Macierz korelacji czujników
+    #plotter.plot_foot_correlation_analysis()   # Analiza korelacji stóp
+    #plotter.plot_symmetry_analysis()           # Analiza symetrii
+    #plotter.plot_cop_analysis()                # Centrum nacisku (COP)
+    #plotter.plot_comprehensive_dashboard()     # Dashboard zbiorczy
 
 # Wczytywanie danych
 #loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")

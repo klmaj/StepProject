@@ -374,3 +374,53 @@ class FootSensorAnalyzer:
         symmetry['pca_components'] = pca.components_
         
         return symmetry
+    
+    def compute_cross_correlation_matrix(self):
+        """
+        Oblicza macierz korelacji pomiędzy czujnikami lewej i prawej stopy (8x8).
+        Zwraca:
+            - corr_matrix: macierz 8x8 z wartościami korelacji Pearsona
+        """
+        corr_matrix = np.zeros((8, 8))
+        for i in range(8):
+            for j in range(8):
+                corr, _ = pearsonr(self.right[:, i], self.left[:, j])
+                corr_matrix[i, j] = corr
+        return corr_matrix
+    
+    def compute_symmetry_indices(self):
+        """
+        Oblicza globalny i czujnikowy wskaźnik symetrii.
+        Zwraca:
+            {
+                'global_symmetry': float,
+                'sensor_symmetry': dict (np. {'1': 12.5, ..., '8': 4.3})
+            }
+        """
+        left_total = np.sum(self.left, axis=1)
+        right_total = np.sum(self.right, axis=1)
+
+        # Globalna symetria
+        mean_left = np.mean(left_total)
+        mean_right = np.mean(right_total)
+
+        if (mean_left + mean_right) == 0:
+            global_symmetry = 0.0
+        else:
+            global_symmetry = 100 * 2 * abs(mean_left - mean_right) / (mean_left + mean_right)
+
+        # Symetria dla każdego czujnika
+        sensor_symmetry = {}
+        for i in range(8):
+            l_mean = np.mean(self.left[:, i])
+            r_mean = np.mean(self.right[:, i])
+            if (l_mean + r_mean) == 0:
+                index = 0.0
+            else:
+                index = 100 * 2 * abs(l_mean - r_mean) / (l_mean + r_mean)
+            sensor_symmetry[str(i + 1)] = index
+
+        return {
+            'global_symmetry': global_symmetry,
+            'sensor_symmetry': sensor_symmetry
+        }
