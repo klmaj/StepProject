@@ -334,7 +334,6 @@ class FootSensorAnalyzer:
 
         return mean_max_per_sensor
 
-
     def analyze_multi_sensor_symmetry(self):
         """Zaawansowana analiza symetrii dla wszystkich czujników"""
         symmetry = {}
