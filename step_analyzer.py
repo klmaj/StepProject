@@ -250,12 +250,15 @@ class FootSensorAnalyzer:
         return signal[start_idx:end_idx], time[start_idx:end_idx]
 
     def find_step_edges(self, signal: np.ndarray, time: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        
         # najpierw przytnij sygnał
-        signal_trimmed, time_trimmed = self.trim_signal_edges(signal, time)
-    
+       # signal_trimmed, time_trimmed = self.trim_signal_edges(signal, time)
+        signal_trimmed, time_trimmed = signal, time
+        #combined_signal = np.any(signal_trimmed != 0, axis=0).astype(int)
+
         # teraz znajdź początek i koniec kroków na przyciętym sygnale
-        step_starts = np.where((signal_trimmed[:-1] == 0) & (signal_trimmed[1:] > 0))[0] + 1
-        step_ends = np.where((signal_trimmed[:-1] > 0) & (signal_trimmed[1:] == 0))[0] + 1
+        step_starts = np.where((signal_trimmed[:-1] == 0) & (signal_trimmed[1:] !=0))[0] + 1
+        step_ends = np.where((signal_trimmed[:-1] != 0) & (signal_trimmed[1:] == 0))[0] + 1
     
         return step_starts, step_ends, time_trimmed
 

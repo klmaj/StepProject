@@ -11,10 +11,10 @@ from symmetry_ploter import EnhancedStepPlotter
 # Przykład użycia:
 if __name__ == "__main__":
     # Załaduj dane
-    loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
-    #loader = SensorDataLoader("Dane2025-06-06.xlsx")
+    #loader = SensorDataLoader("WybraneDaneGotowe1.xlsx")
+    loader = SensorDataLoader("Dane2025-06-06.xlsx")
 
-    time, left, right, sheet_name = loader.load_sheet(0)
+    time, left, right, sheet_name = loader.load_sheet(1)
     
     # Stwórz analizator
     analyzer = FootSensorAnalyzer(time, left, right, sheet_name)
@@ -25,23 +25,21 @@ if __name__ == "__main__":
     # Generuj raport
     analyzer.generate_report()
     
-    # Wykresy - matplotlib (podstawowe)
-    analyzer.plot_raw_data()
-    
     # Wykresy - plotly (interaktywne)
     plotter.plot_signals()
     plotter.plot_step_detection_plotly('left')
-    plotter.plot_pressure_heatmap_both_feet()
 
     plotter.plot_step_periods()
+
+    plotter.plot_pressure_heatmap_both_feet()
 
     plotter.plot_cross_correlation_matrix()
 
     plotter.plot_symmetry_indices()
 
-    symmetry_analyzer = EnhancedFootSensorAnalyzer(time, left, right, sheet_name)
+    #symmetry_analyzer = EnhancedFootSensorAnalyzer(time, left, right, sheet_name)
 
-    raport = symmetry_analyzer.generate_comprehensive_report()
+   # raport = symmetry_analyzer.generate_comprehensive_report()
 
     # 4. Tworzenie obiektów do wizualizacji
     #plotter = EnhancedStepPlotter(symmetry_analyzer)
