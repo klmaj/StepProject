@@ -1,6 +1,8 @@
 from step_analyzer import FootSensorAnalyzer
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import seaborn as sns
+import matplotlib.pyplot as plt
 import numpy as np
 import base64
 
@@ -543,6 +545,228 @@ class StepPlotter:
         else:
             fig.show()
 
-    
 
-    
+    def plot_correlation_heatmaps(self, mean_corrs, max_corrs):
+        """
+        Rysuje dwie mapy ciepła (heatmapy) korelacji między lewą a prawą stopą:
+        - jedna dla średniego nacisku
+        - druga dla maksymalnego nacisku
+
+        Params:
+            mean_corrs: dict z korelacjami (np. {'czujnik_1': 0.82, ...}) dla średniego sygnału
+            max_corrs: dict jak wyżej, ale dla maksymalnego sygnału
+        """
+        sensors = list(mean_corrs.keys())
+        mean_vals = [mean_corrs[s] for s in sensors]
+        max_vals = [max_corrs[s] for s in sensors]
+
+        fig, axes = plt.subplots(1, 2, figsize=(14, 4))
+
+        sns.heatmap(
+            np.array(mean_vals).reshape(1, -1), 
+            annot=True, fmt=".2f", cmap="YlGnBu",
+            xticklabels=sensors, yticklabels=["mean"], 
+            ax=axes[0], vmin=-1, vmax=1, cbar=True
+        )
+        axes[0].set_title("Korelacja L vs P (średni nacisk)")
+
+        sns.heatmap(
+            np.array(max_vals).reshape(1, -1), 
+            annot=True, fmt=".2f", cmap="YlOrRd",
+            xticklabels=sensors, yticklabels=["max"], 
+            ax=axes[1], vmin=-1, vmax=1, cbar=True
+        )
+        axes[1].set_title("Korelacja L vs P (maksymalny nacisk)")
+
+        for ax in axes:
+            ax.tick_params(axis='x', rotation=45)
+
+        plt.tight_layout()
+        plt.show()
+
+
+    def plot_full_corr_heatmap_plotly(self, corr_mean, corr_max, step_range=(0, 0)):
+        """
+        Rysuje dwie heatmapy (obok siebie) pokazujące korelację czujników lewej i prawej stopy:
+        - po lewej: korelacja na podstawie średniego nacisku
+        - po prawej: korelacja na podstawie maksymalnego nacisku
+        """
+        sensors_L = [f"L{i+1}" for i in range(8)]
+        sensors_P = [f"P{i+1}" for i in range(8)]
+        step_info = f"Kroki {step_range[0]}–{step_range[1]}"
+
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=(
+                f"Korelacja L vs P (średni nacisk)<br><sup>{step_info}</sup>",
+                f"Korelacja L vs P (maksymalny nacisk)<br><sup>{step_info}</sup>"
+            ),  
+            horizontal_spacing=0.15
+        )
+
+        # Heatmapa dla średnich wartości
+        fig.add_trace(
+            go.Heatmap(
+                z=corr_mean,
+                x=sensors_P,
+                y=sensors_L,
+                colorscale='RdBu',
+                zmin=-1, zmax=1,
+                colorbar=dict(title="Korelacja", x=0.47),
+                text=np.round(corr_mean, 2),
+                texttemplate="%{text:.2f}"
+            ),
+            row=1, col=1
+        )
+
+        # Heatmapa dla maksymalnych wartości
+        fig.add_trace(
+            go.Heatmap(
+                z=corr_max,
+                x=sensors_P,
+                y=sensors_L,
+                colorscale='RdBu',
+                zmin=-1, zmax=1,
+                showscale=False,
+                text=np.round(corr_max, 2),
+                texttemplate="%{text:.2f}"
+            ),
+            row=1, col=2
+        )
+
+        fig.update_layout(
+            height=600,
+            width=1500,
+            margin=dict(t=100, b=50, r=200),  # zostaw miejsce po prawej
+            title_text="Macierz korelacji czujników L vs P (średnia i maksymalna wartość w krokach)",
+            template="plotly_white"
+        )
+
+        fig.show()
+
+
+    def plot_si_map_heatmaps(self, si_matrix, mapd_matrix):
+        """
+        Rysuje dwie heatmapy 8x8: Symmetry Index (SI) i MAPD.
+        Wiersze: czujniki lewej stopy (L1–L8), kolumny: czujniki prawej stopy (P1–P8).
+        """
+        sensors_x = [f"P{j+1}" for j in range(8)]
+        sensors_y = [f"L{i+1}" for i in range(8)]
+
+        fig = make_subplots(
+            rows=1, cols=2,
+            subplot_titles=("Symmetry Index (SI)", "MAPD"),
+            horizontal_spacing=0.15
+        )
+
+        # SI heatmap
+        fig.add_trace(go.Heatmap(
+            z=si_matrix,
+            x=sensors_x,
+            y=sensors_y,
+            colorscale="RdBu",
+            zmid=0,
+            colorbar=dict(title="SI (%)", x=0.45),
+            text=np.round(si_matrix, 2),
+            texttemplate="%{text:.2f}"
+        ), row=1, col=1)
+
+        # MAPD heatmap
+        fig.add_trace(go.Heatmap(
+            z=mapd_matrix,
+            x=sensors_x,
+            y=sensors_y,
+            colorscale="YlOrRd",
+            colorbar=dict(title="MAPD (%)", x=1.0),
+            text=np.round(mapd_matrix, 2),
+            texttemplate="%{text:.2f}"
+        ), row=1, col=2)
+
+        fig.update_layout(
+            title="Mapa Symmetry Index i MAPD między czujnikami L i P",
+            height=800,
+            width=1600,
+            margin=dict(t=100, b=250, r=200),  # zostaw miejsce po prawej
+            template="plotly_white"
+        )
+
+       # Adnotacja pod wykresem SI
+        fig.add_annotation(
+            text=(
+                "<b>SI – Symmetry Index</b><br>"
+                "Wzór: SI = 100 × (L - P) / (0.5 × (L + P))<br>"
+                "Interpretacja: <br>"
+                "SI bliskie 0% oznacza symetrię. <br>"
+                "SI > 0: przewaga lewej stopy, "
+                "SI < 0: przewaga prawej stopy."
+            ),
+            showarrow=False,
+            xref="paper", yref="paper",
+             x=0.05, y=-0.25,  # Pozycja pod pierwszym wykresem
+            align="left",
+            font=dict(size=12),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="black",
+            borderwidth=0
+        )
+
+        # Adnotacja pod wykresem MAPD
+        fig.add_annotation(
+            text=(
+                "<b>MAPD – Mean Absolute Percentage Difference</b><br>"
+                "Wzór: MAPD = 100 × |L - P| / ((L + P) / 2)<br>"
+                "Interpretacja:<br>"
+                "MAPD mierzy względną różnicę między czujnikami <br>"
+                "bez względu na kierunek – im wyższa wartość, tym większa asymetria."
+            ),
+            showarrow=False,
+            xref="paper", yref="paper",
+            x=0.875, y=-0.25,  # Pozycja pod drugim wykresem
+            align="left",
+            font=dict(size=12),
+            bgcolor="rgba(255,255,255,0.8)",
+            bordercolor="black",
+            borderwidth=0
+        )
+
+
+        fig.show()
+
+    def plot_global_signals(self, global_left, global_right):
+        """
+        Rysuje globalny sygnał nacisku lewej i prawej stopy w czasie.
+        """
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(y=global_left, mode='lines', name='Lewa stopa', line=dict(color='blue')))
+        fig.add_trace(go.Scatter(y=global_right, mode='lines', name='Prawa stopa', line=dict(color='red')))
+
+        fig.update_layout(
+            title="Globalna siła nacisku lewej i prawej stopy w czasie",
+            xaxis_title="Czas (próbki)",
+            yaxis_title="Suma nacisków z 8 czujników",
+            template="plotly_white"
+        )
+        fig.show()
+
+    def plot_global_mapd(self, mapd_time, mapd_mean):
+        """
+        Rysuje MAPD w czasie jako miarę globalnej asymetrii.
+        """
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(y=mapd_time, mode='lines', name='MAPD (%)', line=dict(color='purple')))
+
+        fig.add_trace(go.Scatter(
+            x=[0, len(mapd_time)],
+            y=[mapd_mean, mapd_mean],
+            mode='lines',
+            line=dict(dash='dash', color='gray'),
+            name=f'Średnia MAPD: {mapd_mean:.2f} %'
+        ))
+
+        fig.update_layout(
+            title="Globalna asymetria nacisku (MAPD) w czasie",
+            xaxis_title="Czas (próbki)",
+            yaxis_title="MAPD (%)",
+            template="plotly_white"
+        )
+        fig.show()

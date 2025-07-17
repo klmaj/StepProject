@@ -426,3 +426,216 @@ class FootSensorAnalyzer:
             'global_symmetry': global_symmetry,
             'sensor_symmetry': sensor_symmetry
         }
+
+
+    def correlation_left_right_by_step(self, step_range=(0, 0), method='mean'):
+        """
+        Oblicza korelację między lewą i prawą stopą w krokach od n do m,
+        na podstawie średnich lub maksymalnych sygnałów z czujników.
+
+        Params:
+            analyzer: FootSensorAnalyzer
+            step_range: (n, m) — indeksy kroków (włącznie)
+            method: 'mean' lub 'max' — jak agregować dane w kroku
+
+        Returns:
+            dict: { 'czujnik_1': korelacja, ..., 'czujnik_8': korelacja }
+        """
+        left_steps, _ = self.detect_steps('left')
+        right_steps, _ = self.detect_steps('right')
+
+        n, m = step_range
+        results = {f'czujnik_{i+1}': [] for i in range(8)}
+
+        for step_idx in range(n, m + 1):
+            if step_idx >= len(left_steps) or step_idx >= len(right_steps):
+                continue  # pomiń jeśli brakuje kroku
+
+            l_start, l_end = left_steps[step_idx]
+            r_start, r_end = right_steps[step_idx]
+
+            left = self.left[l_start:l_end]
+            right = self.right[r_start:r_end]
+
+            for i in range(8):
+                l_sig = left[:, i]
+                r_sig = right[:, i]
+
+                if method == 'mean':
+                    l_val = np.mean(l_sig)
+                    r_val = np.mean(r_sig)
+                elif method == 'max':
+                    l_val = np.max(l_sig)
+                    r_val = np.max(r_sig)
+                else:
+                    raise ValueError("method must be 'mean' or 'max'")
+
+                results[f'czujnik_{i+1}'].append((l_val, r_val))
+
+        # Teraz policz korelację dla każdej pary sygnałów
+        corr_result = {}
+        for sensor, pairs in results.items():
+            if len(pairs) >= 2:
+                l_vals, r_vals = zip(*pairs)
+                corr, _ = pearsonr(l_vals, r_vals)
+                corr_result[sensor] = corr
+            else:
+                corr_result[sensor] = np.nan  # za mało danych
+
+        return corr_result
+
+
+    def full_correlation_matrix_by_step(self, step_range=(0, 0), method='mean'):
+        """
+        Oblicza pełną macierz korelacji 8x8 między czujnikami lewej i prawej stopy
+        w krokach od n do m (włącznie), na podstawie średnich lub maksymalnych wartości.
+
+        Zwraca:
+            macierz numpy (8x8) z korelacjami
+        """
+        left_steps, _ = self.detect_steps('left')
+        right_steps, _ = self.detect_steps('right')
+        n, m = step_range
+
+        left_features = []
+        right_features = []
+
+        for step_idx in range(n, m + 1):
+            if step_idx >= len(left_steps) or step_idx >= len(right_steps):
+                continue
+
+            l_start, l_end = left_steps[step_idx]
+            r_start, r_end = right_steps[step_idx]
+
+            left = self.left[l_start:l_end]
+            right = self.right[r_start:r_end]
+
+            if method == 'mean':
+                left_vec = np.mean(left, axis=0)
+                right_vec = np.mean(right, axis=0)
+            elif method == 'max':
+                left_vec = np.max(left, axis=0)
+                right_vec = np.max(right, axis=0)
+            else:
+                raise ValueError("method must be 'mean' or 'max'")
+
+            left_features.append(left_vec)
+            right_features.append(right_vec)
+
+        left_mat = np.array(left_features)
+        right_mat = np.array(right_features)
+
+        corr_matrix = np.zeros((8, 8))
+        for i in range(8):
+            for j in range(8):
+                l_col = left_mat[:, i]
+                r_col = right_mat[:, j]
+                if len(l_col) >= 2 and np.std(l_col) > 0 and np.std(r_col) > 0:
+                    corr, _ = pearsonr(l_col, r_col)
+                    corr_matrix[i, j] = corr
+                else:
+                    corr_matrix[i, j] = np.nan
+
+        return corr_matrix
+
+    def full_si_map(self, left_mat, right_mat):
+        """
+        Oblicza pełną macierz Symmetry Index (8x8) dla czujników lewej i prawej stopy.
+        SI = ((L - P) / ((L + P)/2)) * 100%
+        """
+        si_matrix = np.zeros((8, 8))
+
+        for i in range(8):  # czujniki lewej stopy
+            for j in range(8):  # czujniki prawej stopy
+                l = left_mat[:, i]
+                r = right_mat[:, j]
+                mask = (~np.isnan(l)) & (~np.isnan(r))
+                if np.sum(mask) == 0:
+                    si_matrix[i, j] = np.nan
+                else:
+                    l_valid = l[mask]
+                    r_valid = r[mask]
+                    si_vals = ((l_valid - r_valid) / ((l_valid + r_valid) / 2)) * 100
+                    si_matrix[i, j] = np.mean(si_vals)
+
+        return si_matrix
+
+    def full_mapd_map(self, left_mat, right_mat):
+        """
+        Oblicza pełną macierz MAPD (8x8) między czujnikami lewej i prawej stopy.
+        MAPD = mean( |L - P| / ((L + P)/2) ) * 100%
+        """
+        mapd_matrix = np.zeros((8, 8))
+
+        for i in range(8):
+            for j in range(8):
+                l = left_mat[:, i]
+                r = right_mat[:, j]
+                mask = (~np.isnan(l)) & (~np.isnan(r))
+                if np.sum(mask) == 0:
+                    mapd_matrix[i, j] = np.nan
+                else:
+                    l_valid = l[mask]
+                    r_valid = r[mask]
+                    mapd_vals = (np.abs(l_valid - r_valid) / ((l_valid + r_valid) / 2)) * 100
+                    mapd_matrix[i, j] = np.mean(mapd_vals)
+
+        return mapd_matrix
+
+    def get_max_signal_matrix(self, step_range=(0, 0)):
+        left_steps, _ = self.detect_steps('left')
+        right_steps, _ = self.detect_steps('right')
+        n, m = step_range
+
+        left_features = []
+        right_features = []
+
+        for step_idx in range(n, m + 1):
+            if step_idx < len(left_steps) and step_idx < len(right_steps):
+                l_start, l_end = left_steps[step_idx]
+                r_start, r_end = right_steps[step_idx]
+                
+                # Weź fragment sygnału z danego kroku
+                left = self.left[l_start:l_end]
+                right = self.right[r_start:r_end]
+                
+                # Użyj np. wartości maksymalnych (możesz zmienić na mean)
+                left_vec = np.max(left, axis=0)
+                right_vec = np.max(right, axis=0)
+
+                left_features.append(left_vec)
+                right_features.append(right_vec)
+
+        # 3. Konwersja do macierzy (kroki x 8)
+        left_mat = np.array(left_features)
+        right_mat = np.array(right_features)
+
+        return left_mat, right_mat
+    
+    def compute_global_signals(self):
+        """
+        Oblicza globalny nacisk lewej i prawej stopy w czasie
+        jako sumę sygnałów z 8 czujników (czyli siłę całkowitą).
+        
+        Returns:
+            global_left, global_right – 1D numpy arrays (czas,)
+        """
+        global_left = np.sum(self.left, axis=1)
+        global_right = np.sum(self.right, axis=1)
+        return global_left, global_right
+
+    def compute_global_mapd(self, global_left, global_right):
+        """
+        Oblicza MAPD (Mean Absolute Percentage Difference) w czasie
+        oraz jego średnią wartość dla całego sygnału.
+
+        Returns:
+            mapd_time – MAPD w czasie (1D array)
+            mapd_mean – średni MAPD (float)
+        """
+        denominator = (global_left + global_right) / 2
+        mask = denominator > 0  # unikamy dzielenia przez 0
+        mapd_time = np.zeros_like(global_left)
+        mapd_time[mask] = (np.abs(global_left[mask] - global_right[mask]) / denominator[mask]) * 100
+        mapd_mean = np.mean(mapd_time[mask])
+        return mapd_time, mapd_mean
