@@ -736,9 +736,26 @@ class StepPlotter:
         """
         Rysuje globalny sygnał nacisku lewej i prawej stopy w czasie.
         """
+
+        avg_left = np.mean(global_left)
+        avg_right = np.mean(global_right)
+        sample_count = max(len(global_left), len(global_right))
+
         fig = go.Figure()
         fig.add_trace(go.Scatter(y=global_left, mode='lines', name='Lewa stopa', line=dict(color='blue')))
         fig.add_trace(go.Scatter(y=global_right, mode='lines', name='Prawa stopa', line=dict(color='red')))
+
+        # Średnia lewa
+        fig.add_trace(go.Scatter(
+            y=[avg_left] * sample_count, mode='lines',
+            name='Średnia lewa', line=dict(color='blue', dash='dash')
+        ))
+
+        # Średnia prawa
+        fig.add_trace(go.Scatter(
+            y=[avg_right] * sample_count, mode='lines',
+            name='Średnia prawa', line=dict(color='red', dash='dash')
+        ))
 
         fig.update_layout(
             title="Globalna siła nacisku lewej i prawej stopy w czasie",
@@ -748,25 +765,4 @@ class StepPlotter:
         )
         fig.show()
 
-    def plot_global_mapd(self, mapd_time, mapd_mean):
-        """
-        Rysuje MAPD w czasie jako miarę globalnej asymetrii.
-        """
-        fig = go.Figure()
-        fig.add_trace(go.Scatter(y=mapd_time, mode='lines', name='MAPD (%)', line=dict(color='purple')))
-
-        fig.add_trace(go.Scatter(
-            x=[0, len(mapd_time)],
-            y=[mapd_mean, mapd_mean],
-            mode='lines',
-            line=dict(dash='dash', color='gray'),
-            name=f'Średnia MAPD: {mapd_mean:.2f} %'
-        ))
-
-        fig.update_layout(
-            title="Globalna asymetria nacisku (MAPD) w czasie",
-            xaxis_title="Czas (próbki)",
-            yaxis_title="MAPD (%)",
-            template="plotly_white"
-        )
-        fig.show()
+    
